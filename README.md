@@ -1,5 +1,6 @@
 # ContourMG3
-GUI-based contour plotter. Sister software to [MathGraph3D](https://github.com/sam-lb/mathgraph3d).
+GUI-based contour plotter. Sister software to [MathGraph3D](https://github.com/sam-lb/mathgraph3d). Uses [CAS](https://github.com/sam-lb/CAS) for
+ algebraic expression manipulation.
 
 http://sambrunacini.com/
 
