@@ -2,11 +2,18 @@ import pygame
 from colors import themes
 
 
-
 white = (255, 255, 255)
+black = (0, 0, 0)
+pygame.font.init()
+font = pygame.font.SysFont("arial", 16)
 
 def constrain(x, min_, max_):
     return min(max(min_, x), max_)
+
+def text(text, x, y, surface, color=(255, 255, 255)):
+    """ draws text to a surface """
+    surf = font.render(text, 1, color);
+    surface.blit(surf, (x, y));
 
 
 class Polygon:
@@ -66,15 +73,23 @@ class Contour:
         for i in range(self.resolution+1):
             column = []
             for j in range(self.resolution+1):
-                value = self.function(x, y)
-                self.min = value if self.min is None else min(self.min, value)
-                self.max = value if self.max is None else max(self.max, value)
-                column.append(value)
+                try:
+                    value = self.function(x, y)
+                except Exception:
+                    column.append(None)
+                    raise
+                else:
+                    self.min = value if self.min is None else min(self.min, value)
+                    self.max = value if self.max is None else max(self.max, value)
+                    column.append(value)
                 y += self.steps[1]
             x += self.steps[0]
             y = self.plot.bounds[2]
             self.samples.append(column[:])
 
+        if self.min is None:
+            self.min = 0
+            self.max = 0
         self.span = self.max - self.min
 
     def generate_mesh(self):
@@ -84,12 +99,14 @@ class Contour:
 
         for i in range(self.resolution):
             for j in range(self.resolution):
-                val = (self.samples[i][j] + self.samples[i+1][j] + self.samples[i+1][j+1] + self.samples[i][j+1]) / 4
-                self.mesh.append(Polygon(tuple(self.plot.transform(point) for point in [(x, y),
-                                                                                        (x+self.steps[0], y),
-                                                                                        (x+self.steps[0], y+self.steps[1]),
-                                                                                        (x, y+self.steps[1])]),
-                                         self.get_color(val)))
+                samples = self.samples[i][j], self.samples[i+1][j], self.samples[i+1][j+1], self.samples[i][j+1]
+                if not any((v is None for v in samples)):
+                    val = sum(samples) / 4
+                    self.mesh.append(Polygon(tuple(self.plot.transform(point) for point in [(x, y),
+                                                                                            (x+self.steps[0], y),
+                                                                                            (x+self.steps[0], y+self.steps[1]),
+                                                                                            (x, y+self.steps[1])]),
+                                             self.get_color(val)))
                 y += self.steps[1]
             y = self.plot.bounds[2]
             x += self.steps[0]
@@ -101,11 +118,14 @@ class Contour:
 
 class Plot:
 
-    def __init__(self, surface, bounds=None):
+    def __init__(self, surface, gui, bounds=None, show_details=False):
         self.functions = []
         self.surface = surface
         self.function = None
         self.clock = pygame.time.Clock()
+        self.show_details = show_details
+        self.alive = True
+        self.gui = gui
 
         if bounds is None: bounds = [-4, 4, -4, 4]
         self.set_bounds(bounds)
@@ -115,7 +135,11 @@ class Plot:
             self.bounds, self.units, self.scales
         )
 
+    def kill(self):
+        self.alive = False
+
     def set_bounds(self, bounds):
+        if not (1/100 <= bounds[1] - bounds[0] <= 1000000) or not (1/100 <= bounds[3] - bounds[2] <= 1000000): return
         self.bounds = bounds
         self.units = bounds[1] - bounds[0], bounds[3] - bounds[2]
         self.on_window_scale()
@@ -132,6 +156,9 @@ class Plot:
     def set_function(self, function):
         self.function = function
         self.needs_update = True
+
+    def set_theme(self, theme):
+        if self.function is not None: self.function.set_colors(themes[theme])
 
     def resolve(self, diff):
         if self.function is not None:
@@ -163,9 +190,11 @@ class Plot:
         ])
 
     def transform(self, point):
+        # cartesian -> pixel
         return point[0] * self.scales[0] + self.origin[0], self.origin[1] - point[1] * self.scales[1]
 
     def reverse(self, point):
+        # pixel -> cartesian
         return (point[0] - self.origin[0]) / self.scales[0], (self.origin[1] - point[1]) / self.scales[1]
 
     def export(self, filename, max_res=True):
@@ -175,11 +204,35 @@ class Plot:
                 self.needs_update = True
                 self.update()
             pygame.image.save(self.surface, filename)
+            
+    def get_window_data(self):
+        mouse_position = self.reverse(pygame.mouse.get_pos())
+        mouse_position = round(mouse_position[0], 2), round(mouse_position[1], 2)
+        window_x = round(self.bounds[0], 2), round(self.bounds[1], 2)
+        window_y = round(self.bounds[2], 2), round(self.bounds[3], 2)
+
+        return [
+            "[{}, {}]".format(*window_x),
+            "[{}, {}]".format(*window_y),
+            "({}, {})".format(*mouse_position)
+        ]
+
+    def draw_window_details(self):
+        data = self.get_window_data()
+        text("Window range: {} by {}".format(data[0], data[1]), 5, 5, self.surface, black)
+        text("Mouse: {}".format(data[2]), 5, 25, self.surface, black)
 
     def update(self):
         if self.needs_update:
             self.surface.fill(white)
             if self.function is not None: self.function.draw(self.surface)
             self.needs_update = False
+
+        pygame.draw.rect(self.surface, black, (0, 0, self.width, self.height), 3)
+        if self.show_details:
+            pygame.draw.rect(self.surface, white, (0, 0, 350, 50))
+            self.draw_window_details()
+        self.gui.update_data()
+            
         pygame.display.flip()
         self.clock.tick(50)
