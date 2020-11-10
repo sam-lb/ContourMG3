@@ -1,34 +1,50 @@
-import pygame
+import pygame, os
+import tkinter as tk
 from colors import themes
 from core import Plot, Contour
+from Interface import Interface
 from math import sin, cos, tan, exp, sqrt
 
 
-pygame.init()
 WIDTH = HEIGHT = 500
 HWIDTH = WIDTH / 2
 HHEIGHT = HEIGHT / 2
+
+
+def on_close(*args):
+    plot.kill()
+    root.destroy()
+
+root = tk.Tk()
+interface = Interface(root, width=WIDTH, height=HEIGHT)
+interface.grid(row=0, column=0, rowspan=16)
+os.environ["SDL_WINDOWID"] = str(interface.winfo_id())
+os.environ["SDL_VIDEODRIVER"] = "windib"
+root.protocol("WM_DELETE_WINDOW", on_close)
+root.bind("<Escape>", on_close)
+root.resizable(False, False)
+root.update()
+
+pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Contour plotter")
 pygame.key.set_repeat(100, 50)
 
+plot = Plot(screen, gui=interface)
+#contour = Contour(plot, lambda x, y: x+y*y/10 + 15*(sin(x)*sin(y))**4, 5, themes["rainbow"])
+#plot.set_function(contour)
+interface.set_plot(plot)
 
-plot = Plot(screen)
-contour = Contour(plot, lambda x, y: x+y*y/10 + 15*(sin(x)*sin(y))**4, 5, themes["rainbow"])
-plot.set_function(contour)
-running = True
 
-while running:
+while plot.alive:
     plot.update()
+    root.update()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            plot.kill()
             break
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                running = False
-                break
-            elif event.key == pygame.K_UP:
+            if event.key == pygame.K_UP:
                 plot.resolve(1)
             elif event.key == pygame.K_DOWN:
                 plot.resolve(-1)
