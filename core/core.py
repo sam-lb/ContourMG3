@@ -1,5 +1,5 @@
 import pygame
-from colors import themes
+from .colors import themes
 
 
 white = (255, 255, 255)

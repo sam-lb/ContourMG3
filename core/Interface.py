@@ -1,12 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
-
 from webbrowser import open_new_tab
-from tkinter.messagebox import showinfo
-from core import Contour
-from colors import themes
+from .core import Contour
+from .colors import themes
 from math import sin, cos, tan, sqrt
 from CAS import Parser, Errors
+
+showinfo = tk.messagebox.showinfo
 
 
 ALLOWED_FUNCTIONS = {

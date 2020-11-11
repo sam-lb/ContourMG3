@@ -1,8 +1,6 @@
 import pygame, os
 import tkinter as tk
-from colors import themes
-from core import Plot, Contour
-from Interface import Interface
+import core
 from math import sin, cos, tan, exp, sqrt
 
 
@@ -16,7 +14,7 @@ def on_close(*args):
     root.destroy()
 
 root = tk.Tk()
-interface = Interface(root, width=WIDTH, height=HEIGHT)
+interface = core.Interface(root, width=WIDTH, height=HEIGHT)
 interface.grid(row=0, column=0, rowspan=16)
 os.environ["SDL_WINDOWID"] = str(interface.winfo_id())
 os.environ["SDL_VIDEODRIVER"] = "windib"
@@ -30,9 +28,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Contour plotter")
 pygame.key.set_repeat(100, 50)
 
-plot = Plot(screen, gui=interface)
-#contour = Contour(plot, lambda x, y: x+y*y/10 + 15*(sin(x)*sin(y))**4, 5, themes["rainbow"])
-#plot.set_function(contour)
+plot = core.Plot(screen, gui=interface)
 interface.set_plot(plot)
 
 
