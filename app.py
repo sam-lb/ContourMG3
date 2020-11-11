@@ -1,7 +1,6 @@
 import pygame, os
 import tkinter as tk
 import core
-from math import sin, cos, tan, exp, sqrt
 
 
 WIDTH = HEIGHT = 500
