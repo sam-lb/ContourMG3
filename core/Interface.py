@@ -1,12 +1,15 @@
+import os
 import tkinter as tk
 from tkinter import ttk
 from webbrowser import open_new_tab
 from .core import Contour
 from .colors import themes
+from .examples import examples
 from math import sin, cos, tan, sqrt
 from CAS import Parser, Errors
 
 showinfo = tk.messagebox.showinfo
+save_as = tk.filedialog.asksaveasfile
 
 
 ALLOWED_FUNCTIONS = {
@@ -45,12 +48,31 @@ class Interface(tk.Frame):
     def open_website(self, *args):
         open_new_tab("http://sambrunacini.com/")
 
+    def on_choose_example(self, *args):
+        self.function_text.set(self.example_text.get())
+        self.update_function()
+
+    def on_export(self):
+        files = [("PNG", "*.png")]
+        file_to_save = save_as(filetypes=files, defaultextension=files)
+
+        if file_to_save is not None:
+            try:
+                file = os.path.realpath(file_to_save.name)
+                print(file)
+                self.chicken = file
+                self.plot.export(file)
+            except Exception as e:
+                showinfo("Error", "Error: unable to export image. Details: {}".format(e))
+            else:
+                showinfo("Success", "Successfully saved image to {}.".format(file))
+
     def update_function(self, *args):
         text = self.function_text.get()
         try:
             tree = expression_parser.parse(text)
-            func = lambda x, y: tree.evaluate(x=x, y=y)
-            contour = Contour(self.plot, func, 50, themes[self.contour_theme.get()])
+            func = lambda x, y: tree.quick_unsafe_evaluate(x=x, y=y)
+            contour = Contour(self.plot, func, 30, themes[self.contour_theme.get()])
             self.plot.set_function(contour)
             self.master.focus()
         except Errors.UserError as e:
@@ -82,6 +104,9 @@ class Interface(tk.Frame):
         tk.Label(theme_frame, text="Theme: ", font=self.sfont).grid(row=0, column=0)
         theme_menu = tk.OptionMenu(theme_frame, self.contour_theme, *themes.keys(), command=self.on_theme_change)
         theme_menu.grid(row=0, column=1)
+        self.example_text = tk.StringVar(self)
+        tk.Label(theme_frame, text="Examples: ", font=self.sfont).grid(row=1, column=0)
+        tk.OptionMenu(theme_frame, self.example_text, *examples, command=self.on_choose_example).grid(row=1, column=1)
         theme_frame.grid(row=3, column=2)
 
         window_frame = tk.Frame(self.master, borderwidth=3, relief="groove")
@@ -102,6 +127,7 @@ class Interface(tk.Frame):
         window_frame.grid(row=5, column=1, columnspan=7, sticky="ew")
         
         ttk.Separator(self.master, orient="horizontal").grid(row=6, column=1, columnspan=5)
+        tk.Button(self.master, text="Export max resolution image", command=self.on_export).grid(row=7, column=2)
 
         bottom_frame = tk.Frame(self.master, borderwidth=3, relief="groove")
         tk.Button(bottom_frame, text="Instructions", command=self.show_instructions).grid(row=0, column=0, sticky="ew")

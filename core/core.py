@@ -86,6 +86,7 @@ class Contour:
             x += self.steps[0]
             y = self.plot.bounds[2]
             self.samples.append(column[:])
+            #pygame.event.get() # prevent application from hanging
 
         if self.min is None:
             self.min = 0
@@ -110,6 +111,7 @@ class Contour:
                 y += self.steps[1]
             y = self.plot.bounds[2]
             x += self.steps[0]
+            #pygame.event.get() # prevent application from hanging
 
     def draw(self, surface):
         for polygon in self.mesh:
@@ -118,12 +120,11 @@ class Contour:
 
 class Plot:
 
-    def __init__(self, surface, gui, bounds=None, show_details=False):
+    def __init__(self, surface, gui, bounds=None):
         self.functions = []
         self.surface = surface
         self.function = None
         self.clock = pygame.time.Clock()
-        self.show_details = show_details
         self.alive = True
         self.gui = gui
 
@@ -200,10 +201,18 @@ class Plot:
     def export(self, filename, max_res=True):
         if self.function is not None:
             if max_res:
+                self.surface.fill(white)
+                text("Saving image...", 10, 10, self.surface, color=black)
+                pygame.display.flip()
+                
+                temp = self.function.resolution
                 self.function.resolution = self.max_res
-                self.needs_update = True
+                self.function.generate()
                 self.update()
+                self.function.resolution = temp
+                self.function.generate()
             pygame.image.save(self.surface, filename)
+            self.update()
             
     def get_window_data(self):
         mouse_position = self.reverse(pygame.mouse.get_pos())
@@ -217,11 +226,6 @@ class Plot:
             "({}, {})".format(*mouse_position)
         ]
 
-    def draw_window_details(self):
-        data = self.get_window_data()
-        text("Window range: {} by {}".format(data[0], data[1]), 5, 5, self.surface, black)
-        text("Mouse: {}".format(data[2]), 5, 25, self.surface, black)
-
     def update(self):
         if self.needs_update:
             self.surface.fill(white)
@@ -229,10 +233,6 @@ class Plot:
             self.needs_update = False
 
         pygame.draw.rect(self.surface, black, (0, 0, self.width, self.height), 3)
-        if self.show_details:
-            pygame.draw.rect(self.surface, white, (0, 0, 350, 50))
-            self.draw_window_details()
         self.gui.update_data()
-            
         pygame.display.flip()
         self.clock.tick(50)
